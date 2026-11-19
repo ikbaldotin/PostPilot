@@ -1,4 +1,5 @@
 import { createApp } from "./app.js";
+import { prisma } from "./lib/prisma.js";
 import { startServer } from "./server.js";
 
 async function bootstrap() {
@@ -6,7 +7,8 @@ async function bootstrap() {
   startServer(app);
 }
 
-bootstrap().catch((err) => {
+bootstrap().catch(async (err) => {
   console.error("Failed to start application:", err);
+  await prisma.$disconnect();
   process.exit(1);
 });
