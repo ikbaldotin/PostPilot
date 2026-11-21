@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../utils/jwt.js";
 import type { JwtPayload } from "jsonwebtoken";
-const isAuth = async (req: Request, res: Response, next: NextFunction) => {
+const isAuth = (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = req.cookies.token;
     if (!token) {
@@ -15,7 +15,7 @@ const isAuth = async (req: Request, res: Response, next: NextFunction) => {
 
     req.userId = decoded.userId;
 
-    next();
+    return next();
   } catch (error) {
     return res.status(401).json({ error: "Unauthorized" });
   }

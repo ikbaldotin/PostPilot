@@ -10,6 +10,11 @@ const envSchema = z.object({
   DATABASE_URL: z.url(),
   CORS_ORIGIN: z.string(),
   JWT_SECRET: z.string(),
+  INSTAGRAM_APP_ID: z.string().min(1),
+  INSTAGRAM_CONFIG_ID: z.string(),
+  INSTAGRAM_APP_SECRET: z.string().min(1),
+  INSTAGRAM_REDIRECT_URI: z.url(),
+  INSTAGRAM_TOKEN_ENCRYPTION_KEY: z.string().regex(/^[a-fA-F0-9]{64}$/),
 });
 
 const parsed = envSchema.safeParse(process.env);
