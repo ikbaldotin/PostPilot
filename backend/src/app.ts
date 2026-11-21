@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import { env } from "./config/env.js";
 import helmet from "helmet";
 import authRouter from "./router/auth.route.js";
+import instagramRouter from "./router/instagram.route.js";
 export function createApp(): Application {
   const app = express();
   app.use(helmet());
@@ -23,5 +24,6 @@ export function createApp(): Application {
     res.status(200).json({ status: "ok" });
   });
   app.use("/api/auth", authRouter);
+  app.use("/api/instagram", instagramRouter);
   return app;
 }
