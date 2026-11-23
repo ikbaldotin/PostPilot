@@ -86,17 +86,25 @@ export const getSinglePost = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     const postId = req.params.postId as string;
+    const workspaceId = req.params.workspaceId as string;
     if (!postId) {
       return res.status(400).json({ message: "Post ID is required" });
+    }
+    if (!workspaceId) {
+      return res.status(400).json({ message: "Workspace ID is required" });
+    }
+    const membership = await prisma.membership.findUnique({
+      where: {
+        userId_workspaceId: { userId, workspaceId },
+      },
+    });
+    if (!membership) {
+      return res.status(404).json({ message: "Workspace not found" });
     }
     const post = await prisma.post.findFirst({
       where: {
         id: postId,
-        workspace: {
-          membership: {
-            some: { userId },
-          },
-        },
+        workspaceId,
       },
       include: {
         media: true,
@@ -141,11 +149,6 @@ export const UpdatePost = async (req: Request, res: Response) => {
     if (!membership) {
       return res.status(404).json({ message: "Workspace not found" });
     }
-    if (membership?.role !== "ADMIN" && membership?.role !== "OWNER") {
-      return res
-        .status(403)
-        .json({ message: "Only owner or admin can update posts" });
-    }
     const existingPost = await prisma.post.findFirst({
       where: {
         id: postId,
@@ -154,6 +157,15 @@ export const UpdatePost = async (req: Request, res: Response) => {
     });
     if (!existingPost) {
       return res.status(404).json({ message: "Post not found" });
+    }
+    const canUpdate =
+      membership.role === "OWNER" ||
+      membership.role === "ADMIN" ||
+      (membership.role === "MEMBER" && existingPost.userId === userId);
+    if (!canUpdate) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to update this post" });
     }
     const post = await prisma.post.update({
       where: {
@@ -174,26 +186,41 @@ export const deletePost = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
     const postId = req.params.postId as string;
+    const workspaceId = req.params.workspaceId as string;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const post = await prisma.post.findFirst({
+    if (!workspaceId) {
+      return res.status(400).json({ message: "Workspace ID is required" });
+    }
+    if (!postId) {
+      return res.status(400).json({ message: "Post ID is required" });
+    }
+    const membership = await prisma.membership.findUnique({
       where: {
-        id: postId,
-        workspace: {
-          membership: {
-            some: {
-              userId,
-              role: {
-                in: ["OWNER"],
-              },
-            },
-          },
-        },
+        userId_workspaceId: { userId, workspaceId },
       },
     });
-    if (!post) {
+    if (!membership) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+    const existingPost = await prisma.post.findFirst({
+      where: {
+        id: postId,
+        workspaceId,
+      },
+    });
+    if (!existingPost) {
       return res.status(404).json({ message: "Post not found" });
+    }
+    const canDelete =
+      membership.role === "OWNER" ||
+      membership.role === "ADMIN" ||
+      (membership.role === "MEMBER" && existingPost.userId === userId);
+    if (!canDelete) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this post" });
     }
     await prisma.post.delete({
       where: {
