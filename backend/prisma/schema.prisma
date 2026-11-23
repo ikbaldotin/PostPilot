@@ -20,6 +20,8 @@ model User {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   instagramAccount InstagramAccount?
+  memberships      Membership[]
+  posts            Post[]
 }
 
 model InstagramAccount {
@@ -32,4 +34,76 @@ model InstagramAccount {
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+}
+
+model Workspace {
+  id         String       @id @default(uuid()) @db.Uuid
+  name       String
+  slug       String       @unique
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  membership Membership[]
+  posts      Post[]
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Membership {
+  id          String        @id @default(uuid()) @db.Uuid
+  userId      String        @db.Uuid
+  workspaceId String        @db.Uuid
+  role        WorkspaceRole @default(MEMBER)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model Media {
+  id           String   @id @default(uuid()) @db.Uuid
+  url          String
+  publicId     String   @unique
+  originalName String
+  mimetype     String
+  format       String
+  size         Int
+  postId       String   @unique @db.Uuid
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+model Post {
+  id              String     @id @default(uuid()) @db.Uuid
+  userId          String     @db.Uuid
+  workspaceId     String     @db.Uuid
+  content         String     @db.Text
+  status          PostStatus @default(DRAFT)
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  scheduleVersion Int        @default(0)
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  media           Media?
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([status, scheduledAt])
 }
