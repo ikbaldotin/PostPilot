@@ -10,6 +10,7 @@ import helmet from "helmet";
 import authRouter from "./router/auth.route.js";
 import instagramRouter from "./router/instagram.route.js";
 import postRouter from "./router/post.route.js";
+import workspaceRouter from "./router/workspace.route.js";
 export function createApp(): Application {
   const app = express();
   app.use(helmet());
@@ -27,5 +28,6 @@ export function createApp(): Application {
   app.use("/api/auth", authRouter);
   app.use("/api/instagram", instagramRouter);
   app.use("/api/post", postRouter);
+  app.use("/api/workspace", workspaceRouter);
   return app;
 }
