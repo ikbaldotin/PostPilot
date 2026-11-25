@@ -120,5 +120,6 @@ model PublishAttempt {
   attemptedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@unique([postId, attemptNo])
   @@index([postId])
 }
