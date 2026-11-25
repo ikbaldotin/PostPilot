@@ -12,6 +12,7 @@ import instagramRouter from "./router/instagram.route.js";
 import postRouter from "./router/post.route.js";
 import workspaceRouter from "./router/workspace.route.js";
 import membershipRoute from "./router/membership.route.js";
+import mediaRouter from "./router/media.route.js";
 export function createApp(): Application {
   const app = express();
   app.use(helmet());
@@ -31,5 +32,6 @@ export function createApp(): Application {
   app.use("/api/post", postRouter);
   app.use("/api/workspace", workspaceRouter);
   app.use("/api/membership", membershipRoute);
+  app.use("/api/media", mediaRouter);
   return app;
 }
