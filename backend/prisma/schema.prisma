@@ -86,6 +86,7 @@ enum PostStatus {
   PUBLISHING
   PUBLISHED
   FAILED
+  CANCELLED
 }
 
 model Post {
