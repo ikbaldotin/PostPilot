@@ -9,6 +9,7 @@ const publishWorker = new Worker<PublishJobData>(
   "publish-queue",
   async (job) => {
     const { postId, scheduleVersion } = job.data;
+    const currentAttempt = job.attemptsMade + 1;
     const post = await prisma.post.findUnique({
       where: {
         id: postId,
@@ -55,39 +56,64 @@ const publishWorker = new Worker<PublishJobData>(
     if (claimed.count === 0) {
       return { message: "Post could not be claimed" };
     }
+    let result;
     try {
       const accessToken = decryptToken(instagramAccount.accessTokenEncrypted);
-      const result = await publishInstagramImage({
+      result = await publishInstagramImage({
         imageUrl: media.url,
         caption: post.content,
         instagramUserId: instagramAccount.instagramUserId,
         accessToken,
       });
-      await prisma.post.update({
+    } catch (error) {
+      const totalAttempts = job.opts.attempts ?? 1;
+      const isFinalAttempt = currentAttempt >= totalAttempts;
+      await prisma.$transaction(async (tx) => {
+        await tx.publishAttempt.create({
+          data: {
+            postId: post.id,
+            attemptNo: currentAttempt,
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+        await tx.post.updateMany({
+          where: {
+            id: post.id,
+            status: "PUBLISHING",
+            scheduleVersion,
+          },
+          data: {
+            status: isFinalAttempt ? "FAILED" : "SCHEDULED",
+          },
+        });
+      });
+      throw error;
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.publishAttempt.create({
+        data: {
+          postId: post.id,
+          attemptNo: currentAttempt,
+          success: true,
+        },
+      });
+      await tx.post.update({
         where: {
           id: post.id,
         },
         data: {
           status: "PUBLISHED",
+          publishedAt: new Date(),
         },
       });
-      return {
-        message: "Published",
-        instagramMediaId: result.instagramMediaId,
-      };
-    } catch (error) {
-      await prisma.post.update({
-        where: {
-          id: post.id,
-        },
-        data: {
-          status: "FAILED",
-        },
-      });
-      throw error;
-    }
+    });
+    return {
+      message: "Published",
+      instagramMediaId: result.instagramMediaId,
+    };
   },
-  {
-    connection: redisConnection,
-  },
+  { connection: redisConnection },
 );
+
+export default publishWorker;
