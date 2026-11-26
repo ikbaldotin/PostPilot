@@ -1,7 +1,11 @@
 import { Worker } from "bullmq";
 import type { PublishJobData } from "../type/publish.type.js";
 import { prisma } from "../lib/prisma.js";
-import { publishInstagramImage } from "../provider/instagram.provider.js";
+import {
+  createInstagramContainer,
+  getInstagramContainerStatus,
+  publishInstagramContainer,
+} from "../provider/instagram.provider.js";
 import { decryptToken } from "../utils/encryption.js";
 import redisConnection from "../config/redis.js";
 
@@ -56,18 +60,59 @@ const publishWorker = new Worker<PublishJobData>(
     if (claimed.count === 0) {
       return { message: "Post could not be claimed" };
     }
+
     let result;
     try {
       const accessToken = decryptToken(instagramAccount.accessTokenEncrypted);
-      result = await publishInstagramImage({
-        imageUrl: media.url,
-        caption: post.content,
+      let containerId = post.instagramContainerId;
+      if (!containerId) {
+        containerId = await createInstagramContainer({
+          imageUrl: media.url,
+          caption: post.content,
+          instagramUserId: instagramAccount.instagramUserId,
+          accessToken,
+        });
+      }
+      const saved = await prisma.post.updateMany({
+        where: {
+          id: post.id,
+          status: "PUBLISHING",
+          scheduleVersion,
+          instagramContainerId: null,
+        },
+        data: {
+          instagramContainerId: containerId,
+        },
+      });
+      if (saved.count === 0) {
+        throw new Error("Could not save Instagram container ID.");
+      }
+      const containerStatus = await getInstagramContainerStatus(
+        containerId,
+        accessToken,
+      );
+      if (containerStatus !== "FINISHED") {
+        throw new Error(
+          `Instagram container is not ready. Status: ${containerStatus}`,
+        );
+      }
+      result = await publishInstagramContainer({
+        containerId,
         instagramUserId: instagramAccount.instagramUserId,
         accessToken,
       });
     } catch (error) {
       const totalAttempts = job.opts.attempts ?? 1;
       const isFinalAttempt = currentAttempt >= totalAttempts;
+      const current = await prisma.post.findUnique({
+        where: {
+          id: post.id,
+        },
+        select: {
+          publishAttempts: true,
+        },
+      });
+      const publishWasAttempted = current?.publishAttempts !== null;
       await prisma.$transaction(async (tx) => {
         await tx.publishAttempt.create({
           data: {
@@ -77,16 +122,18 @@ const publishWorker = new Worker<PublishJobData>(
             error: error instanceof Error ? error.message : String(error),
           },
         });
-        await tx.post.updateMany({
-          where: {
-            id: post.id,
-            status: "PUBLISHING",
-            scheduleVersion,
-          },
-          data: {
-            status: isFinalAttempt ? "FAILED" : "SCHEDULED",
-          },
-        });
+        if (!publishWasAttempted) {
+          await tx.post.updateMany({
+            where: {
+              id: post.id,
+              status: "PUBLISHING",
+              scheduleVersion,
+            },
+            data: {
+              status: isFinalAttempt ? "FAILED" : "SCHEDULED",
+            },
+          });
+        }
       });
       throw error;
     }
@@ -98,15 +145,21 @@ const publishWorker = new Worker<PublishJobData>(
           success: true,
         },
       });
-      await tx.post.update({
+      const update = await tx.post.updateMany({
         where: {
           id: post.id,
+          status: "PUBLISHING",
+          scheduleVersion,
         },
         data: {
           status: "PUBLISHED",
           publishedAt: new Date(),
+          instagramMediaId: result.instagramMediaId,
         },
       });
+      if (update.count === 0) {
+        throw new Error("Could not update post publishing status.");
+      }
     });
     return {
       message: "Published",
