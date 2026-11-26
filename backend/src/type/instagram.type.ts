@@ -7,15 +7,25 @@ interface InstagramApiError {
 export interface InstagramApiResponse {
   id?: string;
   error?: InstagramApiError;
+  status_code?: string;
 }
 
-export interface PublishInstagramImageInput {
+export interface PublishInstagramContainerInput {
   instagramUserId: string;
+  containerId: string;
   accessToken: string;
-  imageUrl: string;
-  caption: string;
 }
 export interface PublishInstagramImageResult {
   containerId: string;
   instagramMediaId: string;
+}
+export interface InstagramRequestOptions {
+  method: "GET" | "POST";
+  params: URLSearchParams;
+}
+export interface CreateInstagramContainerInput {
+  instagramUserId: string;
+  accessToken: string;
+  imageUrl: string;
+  caption: string;
 }
