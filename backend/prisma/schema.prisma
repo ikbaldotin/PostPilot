@@ -89,20 +89,22 @@ enum PostStatus {
 }
 
 model Post {
-  id              String           @id @default(uuid()) @db.Uuid
-  userId          String           @db.Uuid
-  workspaceId     String           @db.Uuid
-  content         String           @db.Text
-  status          PostStatus       @default(DRAFT)
-  scheduledAt     DateTime?
-  publishedAt     DateTime?
-  scheduleVersion Int              @default(0)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  media           Media?
-  publishAttempts PublishAttempt[]
+  id                   String           @id @default(uuid()) @db.Uuid
+  userId               String           @db.Uuid
+  workspaceId          String           @db.Uuid
+  content              String           @db.Text
+  status               PostStatus       @default(DRAFT)
+  instagramContainerId String?
+  instagramMediaId     String?          @unique
+  scheduledAt          DateTime?
+  publishedAt          DateTime?
+  scheduleVersion      Int              @default(0)
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace            Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  media                Media?
+  publishAttempts      PublishAttempt[]
 
   @@index([userId])
   @@index([workspaceId])
