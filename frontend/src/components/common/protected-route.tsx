@@ -1,12 +1,16 @@
-import { useCurrentUser } from "@/hooks/use-auth";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
+import { useAuthState } from "@/hooks/use-auth-state";
+
 const ProtectedRoute = () => {
-  const { data: user, isPending, isError, refetch } = useCurrentUser();
+  const { user, isLoading, isError, refetch } = useAuthState();
+
   const location = useLocation();
-  if (isPending) {
+
+  if (isLoading) {
     return <div>Checking authentication...</div>;
   }
+
   if (isError) {
     return (
       <div>
@@ -15,9 +19,12 @@ const ProtectedRoute = () => {
       </div>
     );
   }
+
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
+
   return <Outlet />;
 };
+
 export default ProtectedRoute;

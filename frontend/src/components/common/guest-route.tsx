@@ -1,11 +1,14 @@
-import { useCurrentUser } from "@/hooks/use-auth";
 import { Navigate, Outlet } from "react-router-dom";
 
+import { useAuthState } from "@/hooks/use-auth-state";
+
 const GuestRoute = () => {
-  const { data: user, isPending, isError, refetch } = useCurrentUser();
-  if (isPending) {
+  const { user, isLoading, isError, refetch } = useAuthState();
+
+  if (isLoading) {
     return <div>Checking authentication...</div>;
   }
+
   if (isError) {
     return (
       <div>
@@ -18,8 +21,8 @@ const GuestRoute = () => {
   if (user) {
     return <Navigate to="/" replace />;
   }
+
   return <Outlet />;
-  return <div></div>;
 };
 
 export default GuestRoute;

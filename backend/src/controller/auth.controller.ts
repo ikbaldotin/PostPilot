@@ -34,9 +34,7 @@ export const register = async (req: Request, res: Response) => {
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    return res
-      .status(201)
-      .json({ message: "User registered successfully", token });
+    return res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: "Internal server error" });
